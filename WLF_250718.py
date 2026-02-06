@@ -8,13 +8,31 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
 from tkinter import ttk
 
+# ── Color Palette & Style Constants ──────────────────────────────────────────
+BG          = '#F5F6FA'   # main background (off-white)
+SURFACE     = '#FFFFFF'   # card / panel surface
+BORDER      = '#E1E4E8'   # subtle border
+TEXT        = '#24292E'    # primary text
+TEXT_SEC    = '#586069'    # secondary text
+ACCENT      = '#0366D6'   # primary accent (blue)
+ACCENT_HVR  = '#0250A3'   # accent hover
+SUCCESS     = '#28A745'   # green
+SUCCESS_HVR = '#22863A'
+DANGER      = '#D73A49'   # red
+DANGER_HVR  = '#CB2431'
+WARN        = '#F9A825'   # amber
+PLOT_BG     = '#FFFFFF'   # plot background
+PLOT_GRID   = '#E8EAED'   # plot grid color
+FONT_FAMILY = 'Helvetica'
+
+
 class WLF_GUI(tk.Tk):
 
     def __init__(self):
         super().__init__()
         self.title("WLF Analysis Program")
-        self.configure(bg='#2c3e50')  # Modern dark blue background
-        
+        self.configure(bg=BG)
+
         # Initialize variables to prevent attribute errors
         self.dragging = False
         self.selected_line = None
@@ -22,676 +40,510 @@ class WLF_GUI(tk.Tk):
         self.shifted_freqs = None
         self.data = None
         self.estimated_aT_values = None
-        
+
         self.screen_width = self.winfo_screenwidth()
         self.screen_height = self.winfo_screenheight()
         self.geometry("{0}x{1}".format(self.screen_width, self.screen_height // 2))
         self.T_data = None
         self.log_aT_data = None
         self.sort_orders = {'C1': False, 'C2': False, 'SSE': False}
-        
-        # Modern styling
-        self.style = ttk.Style()
-        self.style.theme_use('clam')  # Use clam theme for modern look
-        
-        # Configure modern colors and fonts
-        self.style.configure('TNotebook', background='#34495e', borderwidth=0)
-        self.style.configure('TNotebook.Tab', 
-                           font=('Segoe UI', 14, 'bold'),
-                           background='#34495e',
-                           foreground='#ecf0f1',
-                           padding=[20, 10],
-                           borderwidth=0)
-        self.style.map('TNotebook.Tab',
-                      background=[('selected', '#3498db'), ('active', '#2980b9')],
-                      foreground=[('selected', '#ffffff'), ('active', '#ffffff')])
-        
-        self.style.configure('TLabel', 
-                           font=('Segoe UI', 12),
-                           background='#34495e',
-                           foreground='#ecf0f1')
-        
-        self.style.configure('TButton', 
-                           font=('Segoe UI', 12, 'bold'),
-                           background='#3498db',
-                           foreground='#ffffff',
-                           borderwidth=0,
-                           padding=[15, 8])
-        self.style.map('TButton',
-                      background=[('active', '#2980b9'), ('pressed', '#21618c')],
-                      foreground=[('active', '#ffffff'), ('pressed', '#ffffff')])
-        
-        self.style.configure('TFrame', background='#34495e')
-        self.style.configure('Treeview', 
-                           font=('Segoe UI', 11),
-                           background='#2c3e50',
-                           foreground='#ecf0f1',
-                           fieldbackground='#2c3e50')
-        self.style.configure('Treeview.Heading', 
-                           font=('Segoe UI', 11, 'bold'),
-                           background='#3498db',
-                           foreground='#ffffff')
-        
+
+        self._configure_styles()
         self.create_widgets()
 
+    # ── Theme & Style Setup ──────────────────────────────────────────────────
+    def _configure_styles(self):
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
+
+        # Notebook
+        self.style.configure('TNotebook', background=BG, borderwidth=0)
+        self.style.configure('TNotebook.Tab',
+                             font=(FONT_FAMILY, 11, 'bold'),
+                             background=SURFACE,
+                             foreground=TEXT_SEC,
+                             padding=[18, 8],
+                             borderwidth=0)
+        self.style.map('TNotebook.Tab',
+                       background=[('selected', ACCENT), ('active', '#DDEAF6')],
+                       foreground=[('selected', '#FFFFFF'), ('active', ACCENT)])
+
+        # Labels
+        self.style.configure('TLabel',
+                             font=(FONT_FAMILY, 11),
+                             background=SURFACE,
+                             foreground=TEXT)
+        self.style.configure('Header.TLabel',
+                             font=(FONT_FAMILY, 16, 'bold'),
+                             background=SURFACE,
+                             foreground=TEXT)
+        self.style.configure('SubHeader.TLabel',
+                             font=(FONT_FAMILY, 13, 'bold'),
+                             background=SURFACE,
+                             foreground=TEXT)
+        self.style.configure('Muted.TLabel',
+                             font=(FONT_FAMILY, 10),
+                             background=SURFACE,
+                             foreground=TEXT_SEC)
+
+        # Frames
+        self.style.configure('TFrame', background=SURFACE)
+        self.style.configure('Card.TFrame', background=SURFACE, relief='solid', borderwidth=1)
+        self.style.configure('BG.TFrame', background=BG)
+
+        # Buttons
+        self.style.configure('Primary.TButton',
+                             font=(FONT_FAMILY, 11, 'bold'),
+                             background=ACCENT,
+                             foreground='#FFFFFF',
+                             borderwidth=0,
+                             padding=[16, 8])
+        self.style.map('Primary.TButton',
+                       background=[('active', ACCENT_HVR), ('pressed', ACCENT_HVR)])
+
+        self.style.configure('Success.TButton',
+                             font=(FONT_FAMILY, 11, 'bold'),
+                             background=SUCCESS,
+                             foreground='#FFFFFF',
+                             borderwidth=0,
+                             padding=[16, 8])
+        self.style.map('Success.TButton',
+                       background=[('active', SUCCESS_HVR), ('pressed', SUCCESS_HVR)])
+
+        self.style.configure('Danger.TButton',
+                             font=(FONT_FAMILY, 11, 'bold'),
+                             background=DANGER,
+                             foreground='#FFFFFF',
+                             borderwidth=0,
+                             padding=[16, 8])
+        self.style.map('Danger.TButton',
+                       background=[('active', DANGER_HVR), ('pressed', DANGER_HVR)])
+
+        self.style.configure('Secondary.TButton',
+                             font=(FONT_FAMILY, 11),
+                             background='#EDEFF2',
+                             foreground=TEXT,
+                             borderwidth=0,
+                             padding=[16, 8])
+        self.style.map('Secondary.TButton',
+                       background=[('active', '#DFE1E6'), ('pressed', '#D0D4DB')])
+
+        # Treeview
+        self.style.configure('Treeview',
+                             font=(FONT_FAMILY, 11),
+                             background=SURFACE,
+                             foreground=TEXT,
+                             fieldbackground=SURFACE,
+                             rowheight=28,
+                             borderwidth=0)
+        self.style.configure('Treeview.Heading',
+                             font=(FONT_FAMILY, 11, 'bold'),
+                             background='#F1F3F5',
+                             foreground=TEXT,
+                             borderwidth=1,
+                             relief='flat')
+        self.style.map('Treeview',
+                       background=[('selected', '#DDEAF6')],
+                       foreground=[('selected', ACCENT)])
+
+    # ── Helpers ──────────────────────────────────────────────────────────────
+    def _make_card(self, parent, **kw):
+        """Create a card-like frame with a subtle border."""
+        card = tk.Frame(parent, bg=SURFACE, highlightbackground=BORDER,
+                        highlightthickness=1, **kw)
+        return card
+
+    def _make_entry(self, parent, width=12, default=''):
+        """Create a consistently styled entry widget."""
+        e = tk.Entry(parent, width=width, font=(FONT_FAMILY, 11),
+                     bg=SURFACE, fg=TEXT, relief='solid', bd=1,
+                     highlightcolor=ACCENT, highlightthickness=1,
+                     insertbackground=TEXT)
+        if default:
+            e.insert(0, str(default))
+        return e
+
+    def _make_button(self, parent, text, command, style='Primary.TButton'):
+        return ttk.Button(parent, text=text, command=command, style=style)
+
+    def _setup_plot(self, figsize=(10, 6)):
+        """Create a matplotlib figure + axes with clean styling."""
+        fig, ax = plt.subplots(figsize=figsize)
+        fig.patch.set_facecolor(PLOT_BG)
+        ax.set_facecolor(PLOT_BG)
+        ax.tick_params(colors=TEXT, labelsize=9)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        for spine in ('bottom', 'left'):
+            ax.spines[spine].set_color(BORDER)
+        ax.grid(True, color=PLOT_GRID, linewidth=0.5, linestyle='--')
+        fig.tight_layout()
+        return fig, ax
+
+    def _style_plot(self, ax, xlabel='', ylabel='', title=''):
+        """Apply consistent styling after drawing."""
+        ax.set_xlabel(xlabel, fontsize=10, color=TEXT, fontfamily=FONT_FAMILY)
+        ax.set_ylabel(ylabel, fontsize=10, color=TEXT, fontfamily=FONT_FAMILY)
+        if title:
+            ax.set_title(title, fontsize=12, fontweight='bold', color=TEXT,
+                         fontfamily=FONT_FAMILY, pad=12)
+        ax.legend(fontsize=9, frameon=True, fancybox=False,
+                  edgecolor=BORDER, framealpha=0.95)
+        ax.grid(True, color=PLOT_GRID, linewidth=0.5, linestyle='--')
+
+    def _make_scale(self, parent, label, from_, to_, resolution=1, command=None):
+        """Create a consistently styled tk.Scale slider."""
+        frame = tk.Frame(parent, bg=SURFACE)
+        frame.pack(fill='x', pady=4)
+        tk.Label(frame, text=label, font=(FONT_FAMILY, 10, 'bold'),
+                 bg=SURFACE, fg=TEXT).pack(anchor='w')
+        s = tk.Scale(frame, from_=from_, to_=to_, resolution=resolution,
+                     orient='horizontal', command=command,
+                     bg=SURFACE, fg=TEXT, font=(FONT_FAMILY, 10),
+                     highlightbackground=SURFACE, troughcolor='#E1E4E8',
+                     activebackground=ACCENT, length=280, sliderlength=18,
+                     bd=0, relief='flat')
+        s.pack(fill='x')
+        return s
+
+    # ── Widget Creation ──────────────────────────────────────────────────────
     def create_widgets(self):
         self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=12, pady=(8, 12))
+
         self.create_step1_tab()
         self.create_step2_3_tab()
         self.create_step4_tab()
         self.create_step5_tab()
         self.create_step6_tab()
 
+    # ── Step 1 ───────────────────────────────────────────────────────────────
     def create_step1_tab(self):
-        step1_frame = ttk.Frame(self.notebook)
-        self.notebook.add(step1_frame, text="Step 1: Enter Variables")
-        
-        # Main container with modern styling
-        main_container = tk.Frame(step1_frame, bg='#34495e', padx=20, pady=20)
-        main_container.pack(fill=tk.BOTH, expand=True)
-        
+        step1_frame = ttk.Frame(self.notebook, style='BG.TFrame')
+        self.notebook.add(step1_frame, text="  Step 1: Enter Variables  ")
+
+        # Center card
+        card = self._make_card(step1_frame, padx=32, pady=24)
+        card.place(relx=0.5, rely=0.5, anchor='center')
+
         # Title
-        title_label = tk.Label(main_container, 
-                              text="WLF Parameters Input", 
-                              font=('Segoe UI', 20, 'bold'),
-                              bg='#34495e',
-                              fg='#ecf0f1')
-        title_label.pack(pady=(0, 20))
-        
-        # Input frame with modern styling
-        input_frame = tk.Frame(main_container, bg='#2c3e50', padx=30, pady=30, relief='flat', bd=0)
-        input_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Headers
-        header_frame = tk.Frame(input_frame, bg='#2c3e50')
-        header_frame.pack(fill=tk.X, pady=(0, 20))
-        
-        tk.Label(header_frame, 
-                text="Temperature (°C)", 
-                font=('Segoe UI', 14, 'bold'),
-                bg='#2c3e50',
-                fg='#3498db').grid(row=0, column=0, padx=20)
-        
-        tk.Label(header_frame, 
-                text="log(a_T)", 
-                font=('Segoe UI', 14, 'bold'),
-                bg='#2c3e50',
-                fg='#3498db').grid(row=0, column=1, padx=20)
+        tk.Label(card, text="WLF Parameters Input",
+                 font=(FONT_FAMILY, 18, 'bold'), bg=SURFACE, fg=TEXT
+                 ).grid(row=0, column=0, columnspan=2, pady=(0, 20))
+
+        # Column headers
+        tk.Label(card, text="Temperature (\u00b0C)",
+                 font=(FONT_FAMILY, 12, 'bold'), bg=SURFACE, fg=ACCENT
+                 ).grid(row=1, column=0, padx=24, pady=(0, 8))
+        tk.Label(card, text="log(a\u209c)",
+                 font=(FONT_FAMILY, 12, 'bold'), bg=SURFACE, fg=ACCENT
+                 ).grid(row=1, column=1, padx=24, pady=(0, 8))
 
         self.temp_entries = []
         self.log_aT_entries = []
-        
+
         default_temp_values = [0, 10, 20, 40]
         default_log_aT_values = [1.93, 1.3, 0.9, 0]
 
-        # Create entry fields with modern styling
         for i in range(8):
-            row_frame = tk.Frame(input_frame, bg='#2c3e50')
-            row_frame.pack(fill=tk.X, pady=5)
-            
-            temp_entry = tk.Entry(row_frame, 
-                                width=15, 
-                                font=('Segoe UI', 12),
-                                bg='#ecf0f1',
-                                fg='#2c3e50',
-                                relief='flat',
-                                bd=0)
-            if i < len(default_temp_values):
-                temp_entry.insert(0, str(default_temp_values[i]))
-            temp_entry.grid(row=0, column=0, padx=20, pady=5)
+            temp_entry = self._make_entry(card, width=16,
+                                          default=str(default_temp_values[i]) if i < len(default_temp_values) else '')
+            temp_entry.grid(row=i + 2, column=0, padx=24, pady=4)
             self.temp_entries.append(temp_entry)
 
-            log_aT_entry = tk.Entry(row_frame, 
-                                  width=15, 
-                                  font=('Segoe UI', 12),
-                                  bg='#ecf0f1',
-                                  fg='#2c3e50',
-                                  relief='flat',
-                                  bd=0)
-            if i < len(default_log_aT_values):
-                log_aT_entry.insert(0, str(default_log_aT_values[i]))
-            log_aT_entry.grid(row=0, column=1, padx=20, pady=5)
+            log_aT_entry = self._make_entry(card, width=16,
+                                            default=str(default_log_aT_values[i]) if i < len(default_log_aT_values) else '')
+            log_aT_entry.grid(row=i + 2, column=1, padx=24, pady=4)
             self.log_aT_entries.append(log_aT_entry)
 
+    # ── Step 2 & 3 ──────────────────────────────────────────────────────────
     def create_step2_3_tab(self):
-        step2_3_frame = ttk.Frame(self.notebook)
-        self.notebook.add(step2_3_frame, text="Step 2 & 3: WLF Estimation")
+        step2_3_frame = ttk.Frame(self.notebook, style='BG.TFrame')
+        self.notebook.add(step2_3_frame, text="  Step 2 & 3: WLF Estimation  ")
 
-        # Left panel for plot
-        left_panel = tk.Frame(step2_3_frame, bg='#34495e', padx=15, pady=15)
-        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # ── Left: Plot ──
+        left_panel = tk.Frame(step2_3_frame, bg=BG)
+        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(12, 6), pady=12)
 
-        # Plot title
-        plot_title = tk.Label(left_panel, 
-                             text="WLF Estimation Plot", 
-                             font=('Segoe UI', 16, 'bold'),
-                             bg='#34495e',
-                             fg='#ecf0f1')
-        plot_title.pack(pady=(0, 10))
+        plot_card = self._make_card(left_panel, padx=12, pady=12)
+        plot_card.pack(fill=tk.BOTH, expand=True)
 
-        # Plot frame
-        plot_frame = tk.Frame(left_panel, bg='#2c3e50', relief='flat', bd=0)
-        plot_frame.pack(fill=tk.BOTH, expand=True)
+        tk.Label(plot_card, text="WLF Estimation Plot",
+                 font=(FONT_FAMILY, 14, 'bold'), bg=SURFACE, fg=TEXT
+                 ).pack(anchor='w', pady=(0, 8))
 
-        self.figure, self.ax = plt.subplots(figsize=(10, 6))
-        self.figure.patch.set_facecolor('#2c3e50')
-        self.ax.set_facecolor('#2c3e50')
-        self.canvas = FigureCanvasTkAgg(self.figure, master=plot_frame)
+        self.figure, self.ax = self._setup_plot(figsize=(10, 6))
+        self.canvas = FigureCanvasTkAgg(self.figure, master=plot_card)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Sliders frame
-        sliders_frame = tk.Frame(left_panel, bg='#34495e')
-        sliders_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
+        # Sliders
+        slider_card = self._make_card(left_panel, padx=16, pady=12)
+        slider_card.pack(fill=tk.X, pady=(8, 0))
 
-        self.c1_slider = tk.Scale(sliders_frame, 
-                                 from_=0, to_=1000, 
-                                 orient='horizontal', 
-                                 label='C1', 
-                                 command=self.update_plot, 
-                                 bg='#34495e',
-                                 fg='#ecf0f1',
-                                 font=('Segoe UI', 12),
-                                 highlightbackground='#34495e',
-                                 troughcolor='#2c3e50',
-                                 activebackground='#3498db')
-        self.c1_slider.pack(fill='x', pady=5)
-        
-        self.c2_slider = tk.Scale(sliders_frame, 
-                                 from_=0, to_=1000, 
-                                 orient='horizontal', 
-                                 label='C2', 
-                                 command=self.update_plot, 
-                                 bg='#34495e',
-                                 fg='#ecf0f1',
-                                 font=('Segoe UI', 12),
-                                 highlightbackground='#34495e',
-                                 troughcolor='#2c3e50',
-                                 activebackground='#3498db')
-        self.c2_slider.pack(fill='x', pady=5)
+        self.c1_slider = self._make_scale(slider_card, 'C1', 0, 1000,
+                                          command=self.update_plot)
+        self.c2_slider = self._make_scale(slider_card, 'C2', 0, 1000,
+                                          command=self.update_plot)
 
-        # Right panel for controls
-        right_panel = tk.Frame(step2_3_frame, bg='#34495e', padx=15, pady=15)
-        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        # ── Right: Controls ──
+        right_panel = tk.Frame(step2_3_frame, bg=BG)
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(6, 12), pady=12)
 
-        # Controls title
-        controls_title = tk.Label(right_panel, 
-                                 text="WLF C1, C2 Estimation", 
-                                 font=('Segoe UI', 16, 'bold'),
-                                 bg='#34495e',
-                                 fg='#ecf0f1')
-        controls_title.pack(pady=(0, 15))
+        ctrl_card = self._make_card(right_panel, padx=16, pady=16)
+        ctrl_card.pack(fill=tk.X)
 
-        # Controls frame
-        controls_frame = tk.Frame(right_panel, bg='#34495e')
-        controls_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 15))
+        tk.Label(ctrl_card, text="WLF C1, C2 Estimation",
+                 font=(FONT_FAMILY, 14, 'bold'), bg=SURFACE, fg=TEXT
+                 ).pack(anchor='w', pady=(0, 12))
 
-        # Reference temperature input
-        temp_frame = tk.Frame(controls_frame, bg='#34495e')
-        temp_frame.pack(fill=tk.X, pady=5)
-        
-        tk.Label(temp_frame, 
-                text="Reference Temperature (T_r):", 
-                font=('Segoe UI', 12),
-                bg='#34495e',
-                fg='#ecf0f1').pack(side=tk.LEFT)
-        
-        self.reference_temp_entry = tk.Entry(temp_frame, 
-                                           width=8, 
-                                           font=('Segoe UI', 12),
-                                           bg='#ecf0f1',
-                                           fg='#2c3e50',
-                                           relief='flat',
-                                           bd=0)
-        self.reference_temp_entry.pack(side=tk.LEFT, padx=10)
-        self.reference_temp_entry.insert(0, "40")
+        # Reference temperature
+        ref_frame = tk.Frame(ctrl_card, bg=SURFACE)
+        ref_frame.pack(fill=tk.X, pady=4)
+        tk.Label(ref_frame, text="Reference Temperature (T\u1d63):",
+                 font=(FONT_FAMILY, 11), bg=SURFACE, fg=TEXT
+                 ).pack(side=tk.LEFT)
+        self.reference_temp_entry = self._make_entry(ref_frame, width=8, default='40')
+        self.reference_temp_entry.pack(side=tk.LEFT, padx=(8, 0))
 
-        # Buttons frame
-        buttons_frame = tk.Frame(controls_frame, bg='#34495e')
-        buttons_frame.pack(fill=tk.X, pady=10)
-
-        fit_button = tk.Button(buttons_frame, 
-                              text="Fit Data", 
-                              command=self.fit_data, 
-                              height=2, 
-                              width=12, 
-                              bg='#3498db',
-                              fg='#ffffff',
-                              font=('Segoe UI', 12, 'bold'),
-                              relief='flat',
-                              bd=0,
-                              activebackground='#2980b9',
-                              activeforeground='#ffffff')
-        fit_button.pack(side=tk.LEFT, padx=5)
-
-        save_button = tk.Button(buttons_frame, 
-                               text="Save to Excel", 
-                               command=self.save_to_excel, 
-                               height=2, 
-                               width=15, 
-                               bg='#27ae60',
-                               fg='#ffffff',
-                               font=('Segoe UI', 12, 'bold'),
-                               relief='flat',
-                               bd=0,
-                               activebackground='#229954',
-                               activeforeground='#ffffff')
-        save_button.pack(side=tk.LEFT, padx=5)
+        # Buttons
+        btn_frame = tk.Frame(ctrl_card, bg=SURFACE)
+        btn_frame.pack(fill=tk.X, pady=(12, 8))
+        self._make_button(btn_frame, "Fit Data", self.fit_data,
+                          'Primary.TButton').pack(side=tk.LEFT, padx=(0, 6))
+        self._make_button(btn_frame, "Save to Excel", self.save_to_excel,
+                          'Success.TButton').pack(side=tk.LEFT)
 
         # Result label
-        self.result_label = tk.Label(controls_frame, 
-                                    text="C1: -, C2: -", 
-                                    font=('Segoe UI', 14, 'bold'),
-                                    bg='#34495e',
-                                    fg='#f39c12')
-        self.result_label.pack(pady=10)
+        self.result_label = tk.Label(ctrl_card, text="C1: \u2014   C2: \u2014",
+                                     font=(FONT_FAMILY, 14, 'bold'),
+                                     bg=SURFACE, fg=ACCENT)
+        self.result_label.pack(anchor='w', pady=(8, 12))
 
-        # Treeview for results
-        tree_frame = tk.Frame(right_panel, bg='#34495e')
-        tree_frame.pack(fill=tk.BOTH, expand=True)
+        # Treeview
+        tree_card = self._make_card(right_panel, padx=8, pady=8)
+        tree_card.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
 
-        self.tree = ttk.Treeview(tree_frame, 
-                                columns=('Select', 'C1', 'C2', 'SSE'), 
-                                show='headings', 
-                                height=15)
-        self.tree.heading('Select', text='Select')
-        self.tree.heading('C1', text='C1', command=lambda: self.sort_tree_column('C1', False))
-        self.tree.heading('C2', text='C2', command=lambda: self.sort_tree_column('C2', False))
-        self.tree.heading('SSE', text='SSE', command=lambda: self.sort_tree_column('SSE', False))
-        self.tree.column('Select', width=80, anchor='center')
+        self.tree = ttk.Treeview(tree_card,
+                                 columns=('Select', 'C1', 'C2', 'SSE'),
+                                 show='headings', height=15)
+        self.tree.heading('Select', text='Sel')
+        self.tree.heading('C1', text='C1',
+                          command=lambda: self.sort_tree_column('C1', False))
+        self.tree.heading('C2', text='C2',
+                          command=lambda: self.sort_tree_column('C2', False))
+        self.tree.heading('SSE', text='SSE',
+                          command=lambda: self.sort_tree_column('SSE', False))
+        self.tree.column('Select', width=50, anchor='center')
         self.tree.column('C1', width=80, anchor='center')
         self.tree.column('C2', width=80, anchor='center')
-        self.tree.column('SSE', width=80, anchor='center')
-        self.tree.pack(fill=tk.BOTH, expand=True)
+        self.tree.column('SSE', width=90, anchor='center')
+
+        scrollbar = ttk.Scrollbar(tree_card, orient='vertical',
+                                  command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.tree.bind('<ButtonRelease-1>', self.on_row_click)
 
-        # SSE explanation
-        sse_label = tk.Label(right_panel, 
-                            text="SSE = Σ(log(a_T) - fit(log(a_T)))^2", 
-                            font=("Segoe UI", 10),
-                            bg='#34495e',
-                            fg='#bdc3c7')
-        sse_label.pack(pady=5)
+        # SSE note
+        tk.Label(right_panel, text="SSE = \u03a3(log(a\u209c) \u2212 fit)²",
+                 font=(FONT_FAMILY, 10), bg=BG, fg=TEXT_SEC
+                 ).pack(anchor='w', pady=(6, 0), padx=8)
 
+    # ── Step 4 ───────────────────────────────────────────────────────────────
     def create_step4_tab(self):
-        step4_frame = ttk.Frame(self.notebook)
-        self.notebook.add(step4_frame, text="Step 4: Estimate aT")
+        step4_frame = ttk.Frame(self.notebook, style='BG.TFrame')
+        self.notebook.add(step4_frame, text="  Step 4: Estimate a\u209c  ")
 
-        # Main container
-        main_container = tk.Frame(step4_frame, bg='#34495e', padx=20, pady=20)
-        main_container.pack(fill=tk.BOTH, expand=True)
+        wrapper = tk.Frame(step4_frame, bg=BG)
+        wrapper.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
 
-        # Title
-        title_label = tk.Label(main_container, 
-                              text="Estimate aT at Desired Temperature", 
-                              font=('Segoe UI', 18, 'bold'),
-                              bg='#34495e',
-                              fg='#ecf0f1')
-        title_label.pack(pady=(0, 20))
+        # Top controls card
+        ctrl_card = self._make_card(wrapper, padx=20, pady=16)
+        ctrl_card.pack(fill=tk.X)
 
-        # Controls frame
-        controls_frame = tk.Frame(main_container, bg='#34495e')
-        controls_frame.pack(pady=15, fill=tk.X)
+        tk.Label(ctrl_card, text="Estimate a\u209c at Desired Temperature",
+                 font=(FONT_FAMILY, 14, 'bold'), bg=SURFACE, fg=TEXT
+                 ).pack(anchor='w', pady=(0, 12))
 
-        # Input frame
-        input_frame = tk.Frame(controls_frame, bg='#2c3e50', padx=20, pady=20, relief='flat', bd=0)
-        input_frame.pack(fill=tk.X)
+        row = tk.Frame(ctrl_card, bg=SURFACE)
+        row.pack(fill=tk.X)
 
-        tk.Label(input_frame, 
-                text="T_Ref_new:", 
-                font=('Segoe UI', 12),
-                bg='#2c3e50',
-                fg='#ecf0f1').pack(side=tk.LEFT, padx=10)
-        
-        self.new_reference_temp_entry = tk.Entry(input_frame, 
-                                               width=8, 
-                                               font=('Segoe UI', 12),
-                                               bg='#ecf0f1',
-                                               fg='#2c3e50',
-                                               relief='flat',
-                                               bd=0)
-        self.new_reference_temp_entry.pack(side=tk.LEFT, padx=10)
-        self.new_reference_temp_entry.insert(0, "40")
+        tk.Label(row, text="T_Ref_new:", font=(FONT_FAMILY, 11),
+                 bg=SURFACE, fg=TEXT).pack(side=tk.LEFT)
+        self.new_reference_temp_entry = self._make_entry(row, width=8, default='40')
+        self.new_reference_temp_entry.pack(side=tk.LEFT, padx=(8, 16))
 
-        # Buttons
-        estimate_button = tk.Button(input_frame, 
-                                   text="Estimate aT", 
-                                   command=self.estimate_aT, 
-                                   height=2, 
-                                   width=15, 
-                                   bg='#3498db',
-                                   fg='#ffffff',
-                                   font=('Segoe UI', 12, 'bold'),
-                                   relief='flat',
-                                   bd=0,
-                                   activebackground='#2980b9',
-                                   activeforeground='#ffffff')
-        estimate_button.pack(side=tk.LEFT, padx=10)
+        self._make_button(row, "Estimate a\u209c", self.estimate_aT,
+                          'Primary.TButton').pack(side=tk.LEFT, padx=(0, 6))
+        self._make_button(row, "Save a\u209c to Excel",
+                          self.save_estimated_aT_to_excel,
+                          'Success.TButton').pack(side=tk.LEFT, padx=(0, 6))
+        self._make_button(row, "Send a\u209c to Step 5", self.send_aT_values,
+                          'Danger.TButton').pack(side=tk.LEFT)
 
-        save_estimate_button = tk.Button(input_frame, 
-                                        text="Save aT to Excel", 
-                                        command=self.save_estimated_aT_to_excel, 
-                                        height=2, 
-                                        width=18, 
-                                        bg='#27ae60',
-                                        fg='#ffffff',
-                                        font=('Segoe UI', 12, 'bold'),
-                                        relief='flat',
-                                        bd=0,
-                                        activebackground='#229954',
-                                        activeforeground='#ffffff')
-        save_estimate_button.pack(side=tk.LEFT, padx=10)
+        # Plot card
+        plot_card = self._make_card(wrapper, padx=12, pady=12)
+        plot_card.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
 
-        send_aT_button = tk.Button(input_frame, 
-                                  text="Send aT to Step 5", 
-                                  command=self.send_aT_values, 
-                                  height=2, 
-                                  width=18, 
-                                  bg='#e74c3c',
-                                  fg='#ffffff',
-                                  font=('Segoe UI', 12, 'bold'),
-                                  relief='flat',
-                                  bd=0,
-                                  activebackground='#c0392b',
-                                  activeforeground='#ffffff')
-        send_aT_button.pack(side=tk.LEFT, padx=10)
-
-        # Plot frame
-        plot_frame = tk.Frame(main_container, bg='#2c3e50', relief='flat', bd=0)
-        plot_frame.pack(fill=tk.BOTH, expand=True, pady=(20, 0))
-
-        self.estimate_figure, self.estimate_ax = plt.subplots(figsize=(10, 6))
-        self.estimate_figure.patch.set_facecolor('#2c3e50')
-        self.estimate_ax.set_facecolor('#2c3e50')
-        self.estimate_canvas = FigureCanvasTkAgg(self.estimate_figure, master=plot_frame)
+        self.estimate_figure, self.estimate_ax = self._setup_plot(figsize=(10, 6))
+        self.estimate_canvas = FigureCanvasTkAgg(self.estimate_figure,
+                                                  master=plot_card)
         self.estimate_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+    # ── Step 5 ───────────────────────────────────────────────────────────────
     def create_step5_tab(self):
-        step5_frame = ttk.Frame(self.notebook)
-        self.notebook.add(step5_frame, text="Step 5: Shift Data")
+        step5_frame = ttk.Frame(self.notebook, style='BG.TFrame')
+        self.notebook.add(step5_frame, text="  Step 5: Shift Data  ")
 
-        # Main container
-        main_container = tk.Frame(step5_frame, bg='#34495e', padx=20, pady=20)
-        main_container.pack(fill=tk.BOTH, expand=True)
+        wrapper = tk.Frame(step5_frame, bg=BG)
+        wrapper.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
 
-        # Title
-        title_label = tk.Label(main_container, 
-                              text="Shift Data Using TTS", 
-                              font=('Segoe UI', 18, 'bold'),
-                              bg='#34495e',
-                              fg='#ecf0f1')
-        title_label.pack(pady=(0, 20))
+        # Buttons card
+        btn_card = self._make_card(wrapper, padx=20, pady=16)
+        btn_card.pack(fill=tk.X)
 
-        # Buttons frame
-        buttons_frame = tk.Frame(main_container, bg='#34495e')
-        buttons_frame.pack(fill=tk.X, pady=(0, 20))
+        tk.Label(btn_card, text="Shift Data Using TTS",
+                 font=(FONT_FAMILY, 14, 'bold'), bg=SURFACE, fg=TEXT
+                 ).pack(anchor='w', pady=(0, 12))
 
-        # Create modern buttons
+        btn_row = tk.Frame(btn_card, bg=SURFACE)
+        btn_row.pack(fill=tk.X)
+
         button_configs = [
-            ("Load Data", self.load_data, '#3498db'),
-            ("Shift Data", self.apply_tts, '#27ae60'),
-            ("Retrieve aT Values", self.retrieve_aT_values, '#f39c12'),
-            ("Save Shifted Data", self.save_shifted_data_to_excel, '#9b59b6'),
-            ("Send to Step 6", self.send_to_step6, '#e74c3c'),
-            ("Output TTS", self.output_tts, '#1abc9c'),
-            ("Smooth Curve", self.smooth_curve, '#34495e')
+            ("Load Data",          self.load_data,                 'Primary.TButton'),
+            ("Shift Data",         self.apply_tts,                 'Success.TButton'),
+            ("Retrieve a\u209c",   self.retrieve_aT_values,        'Secondary.TButton'),
+            ("Save Shifted Data",  self.save_shifted_data_to_excel, 'Secondary.TButton'),
+            ("Send to Step 6",     self.send_to_step6,             'Danger.TButton'),
+            ("Output TTS",         self.output_tts,                'Secondary.TButton'),
+            ("Smooth Curve",       self.smooth_curve,              'Secondary.TButton'),
         ]
 
-        for text, command, color in button_configs:
-            btn = tk.Button(buttons_frame, 
-                           text=text, 
-                           command=command, 
-                           height=2, 
-                           width=15, 
-                           bg=color,
-                           fg='#ffffff',
-                           font=('Segoe UI', 11, 'bold'),
-                           relief='flat',
-                           bd=0,
-                           activebackground=self.darken_color(color),
-                           activeforeground='#ffffff')
-            btn.pack(side=tk.LEFT, padx=5, pady=5)
+        for text, command, bstyle in button_configs:
+            self._make_button(btn_row, text, command, bstyle
+                              ).pack(side=tk.LEFT, padx=(0, 6), pady=2)
 
-        # Plot frame
-        plot_frame = tk.Frame(main_container, bg='#2c3e50', relief='flat', bd=0)
-        plot_frame.pack(fill=tk.BOTH, expand=True)
+        # Plot card
+        plot_card = self._make_card(wrapper, padx=12, pady=12)
+        plot_card.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
 
-        self.shifted_figure, self.shifted_ax = plt.subplots(figsize=(10, 6))
-        self.shifted_figure.patch.set_facecolor('#2c3e50')
-        self.shifted_ax.set_facecolor('#2c3e50')
-        self.shifted_canvas = FigureCanvasTkAgg(self.shifted_figure, master=plot_frame)
+        self.shifted_figure, self.shifted_ax = self._setup_plot(figsize=(10, 6))
+        self.shifted_canvas = FigureCanvasTkAgg(self.shifted_figure,
+                                                 master=plot_card)
         self.shifted_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Event handlers for dragging
         self.shifted_canvas.mpl_connect('button_press_event', self.on_press)
         self.shifted_canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.shifted_canvas.mpl_connect('button_release_event', self.on_release)
 
+    # ── Step 6 ───────────────────────────────────────────────────────────────
     def create_step6_tab(self):
-        step6_frame = ttk.Frame(self.notebook)
-        self.notebook.add(step6_frame, text="Step 6: Modify Master Curve")
+        step6_frame = ttk.Frame(self.notebook, style='BG.TFrame')
+        self.notebook.add(step6_frame, text="  Step 6: Modify Master Curve  ")
 
-        # Left panel for main plot
-        left_panel = tk.Frame(step6_frame, bg='#34495e', padx=15, pady=15)
-        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # ── Left: Master curve plot ──
+        left_panel = tk.Frame(step6_frame, bg=BG)
+        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True,
+                        padx=(12, 6), pady=12)
 
-        # Title
-        title_label = tk.Label(left_panel, 
-                              text="Master Curve Modification", 
-                              font=('Segoe UI', 16, 'bold'),
-                              bg='#34495e',
-                              fg='#ecf0f1')
-        title_label.pack(pady=(0, 10))
+        plot_card = self._make_card(left_panel, padx=12, pady=12)
+        plot_card.pack(fill=tk.BOTH, expand=True)
 
-        # Plot frame
-        plot_frame = tk.Frame(left_panel, bg='#2c3e50', relief='flat', bd=0)
-        plot_frame.pack(fill=tk.BOTH, expand=True)
+        tk.Label(plot_card, text="Master Curve",
+                 font=(FONT_FAMILY, 14, 'bold'), bg=SURFACE, fg=TEXT
+                 ).pack(anchor='w', pady=(0, 8))
 
-        self.master_curve_figure, self.master_curve_ax = plt.subplots(figsize=(10, 6))
-        self.master_curve_figure.patch.set_facecolor('#2c3e50')
-        self.master_curve_ax.set_facecolor('#2c3e50')
-        self.master_curve_canvas = FigureCanvasTkAgg(self.master_curve_figure, master=plot_frame)
+        self.master_curve_figure, self.master_curve_ax = self._setup_plot(
+            figsize=(10, 6))
+        self.master_curve_canvas = FigureCanvasTkAgg(
+            self.master_curve_figure, master=plot_card)
         self.master_curve_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Right panel for controls
-        right_panel = tk.Frame(step6_frame, bg='#34495e', padx=15, pady=15)
-        right_panel.pack(side=tk.RIGHT, fill=tk.Y)
+        # ── Right: Controls ──
+        right_panel = tk.Frame(step6_frame, bg=BG, width=320)
+        right_panel.pack(side=tk.RIGHT, fill=tk.Y, padx=(6, 12), pady=12)
+        right_panel.pack_propagate(False)
 
         # Temperature table
-        table_frame = tk.Frame(right_panel, bg='#34495e')
-        table_frame.pack(fill=tk.X, pady=(0, 15))
+        table_card = self._make_card(right_panel, padx=12, pady=12)
+        table_card.pack(fill=tk.X)
 
-        table_title = tk.Label(table_frame, 
-                              text="Temperature Selection", 
-                              font=('Segoe UI', 14, 'bold'),
-                              bg='#34495e',
-                              fg='#ecf0f1')
-        table_title.pack(pady=(0, 10))
+        tk.Label(table_card, text="Temperature Selection",
+                 font=(FONT_FAMILY, 12, 'bold'), bg=SURFACE, fg=TEXT
+                 ).pack(anchor='w', pady=(0, 8))
 
-        self.temp_table = ttk.Treeview(table_frame, 
-                                      columns=("Temperature"), 
-                                      show='headings', 
-                                      height=8)
-        self.temp_table.heading("Temperature", text="Temperature (°C)")
+        self.temp_table = ttk.Treeview(table_card, columns=("Temperature"),
+                                        show='headings', height=8)
+        self.temp_table.heading("Temperature", text="Temperature (\u00b0C)")
         self.temp_table.bind("<ButtonRelease-1>", self.on_table_select)
         self.temp_table.pack(fill=tk.X)
 
-        # Controls frame
-        controls_frame = tk.Frame(right_panel, bg='#34495e')
-        controls_frame.pack(fill=tk.BOTH, expand=True)
-
         # Sliders
-        sliders_frame = tk.Frame(controls_frame, bg='#34495e')
-        sliders_frame.pack(fill=tk.X, pady=10)
+        slider_card = self._make_card(right_panel, padx=12, pady=12)
+        slider_card.pack(fill=tk.X, pady=(8, 0))
 
-        self.at_slider = tk.Scale(sliders_frame, 
-                                 from_=0.1, to_=10, 
-                                 resolution=0.1, 
-                                 orient='horizontal', 
-                                 label='aT', 
-                                 command=self.update_master_curve, 
-                                 bg='#34495e',
-                                 fg='#ecf0f1',
-                                 font=('Segoe UI', 11),
-                                 highlightbackground='#34495e',
-                                 troughcolor='#2c3e50',
-                                 activebackground='#3498db')
-        self.at_slider.pack(fill='x', pady=5)
+        self.at_slider = self._make_scale(slider_card, 'a\u209c', 0.1, 10,
+                                          resolution=0.1,
+                                          command=self.update_master_curve)
+        self.bt_slider = self._make_scale(slider_card, 'b\u209c', 0.1, 10,
+                                          resolution=0.1,
+                                          command=self.update_master_curve)
+        self.sensitivity_slider = self._make_scale(slider_card, 'Sensitivity',
+                                                   1, 10,
+                                                   command=self.update_sensitivity)
 
-        self.bt_slider = tk.Scale(sliders_frame, 
-                                 from_=0.1, to_=10, 
-                                 resolution=0.1, 
-                                 orient='horizontal', 
-                                 label='bT', 
-                                 command=self.update_master_curve, 
-                                 bg='#34495e',
-                                 fg='#ecf0f1',
-                                 font=('Segoe UI', 11),
-                                 highlightbackground='#34495e',
-                                 troughcolor='#2c3e50',
-                                 activebackground='#3498db')
-        self.bt_slider.pack(fill='x', pady=5)
+        # Axis range
+        axis_card = self._make_card(right_panel, padx=12, pady=12)
+        axis_card.pack(fill=tk.X, pady=(8, 0))
 
-        self.sensitivity_slider = tk.Scale(sliders_frame, 
-                                          from_=1, to_=10, 
-                                          orient='horizontal', 
-                                          label='Sensitivity', 
-                                          command=self.update_sensitivity, 
-                                          bg='#34495e',
-                                          fg='#ecf0f1',
-                                          font=('Segoe UI', 11),
-                                          highlightbackground='#34495e',
-                                          troughcolor='#2c3e50',
-                                          activebackground='#3498db')
-        self.sensitivity_slider.pack(fill='x', pady=5)
+        tk.Label(axis_card, text="Axis Range",
+                 font=(FONT_FAMILY, 11, 'bold'), bg=SURFACE, fg=TEXT
+                 ).pack(anchor='w', pady=(0, 8))
 
-        # Axis range controls
-        axis_frame = tk.Frame(controls_frame, bg='#34495e')
-        axis_frame.pack(fill=tk.X, pady=10)
+        xr = tk.Frame(axis_card, bg=SURFACE)
+        xr.pack(fill=tk.X, pady=2)
+        tk.Label(xr, text="X-min:", font=(FONT_FAMILY, 10),
+                 bg=SURFACE, fg=TEXT_SEC).pack(side=tk.LEFT)
+        self.x_min_entry = self._make_entry(xr, width=8, default='1e-1')
+        self.x_min_entry.pack(side=tk.LEFT, padx=(4, 12))
+        tk.Label(xr, text="X-max:", font=(FONT_FAMILY, 10),
+                 bg=SURFACE, fg=TEXT_SEC).pack(side=tk.LEFT)
+        self.x_max_entry = self._make_entry(xr, width=8, default='1e8')
+        self.x_max_entry.pack(side=tk.LEFT, padx=4)
 
-        axis_title = tk.Label(axis_frame, 
-                             text="Axis Range Settings", 
-                             font=('Segoe UI', 12, 'bold'),
-                             bg='#34495e',
-                             fg='#ecf0f1')
-        axis_title.pack(pady=(0, 10))
+        yr = tk.Frame(axis_card, bg=SURFACE)
+        yr.pack(fill=tk.X, pady=2)
+        tk.Label(yr, text="Y-min:", font=(FONT_FAMILY, 10),
+                 bg=SURFACE, fg=TEXT_SEC).pack(side=tk.LEFT)
+        self.y_min_entry = self._make_entry(yr, width=8, default='0.1')
+        self.y_min_entry.pack(side=tk.LEFT, padx=(4, 12))
+        tk.Label(yr, text="Y-max:", font=(FONT_FAMILY, 10),
+                 bg=SURFACE, fg=TEXT_SEC).pack(side=tk.LEFT)
+        self.y_max_entry = self._make_entry(yr, width=8, default='1e4')
+        self.y_max_entry.pack(side=tk.LEFT, padx=4)
 
-        # X-axis controls
-        x_frame = tk.Frame(axis_frame, bg='#34495e')
-        x_frame.pack(fill=tk.X, pady=2)
-
-        tk.Label(x_frame, 
-                text="X-min:", 
-                font=('Segoe UI', 10),
-                bg='#34495e',
-                fg='#ecf0f1').pack(side=tk.LEFT)
-        
-        self.x_min_entry = tk.Entry(x_frame, 
-                                   width=8, 
-                                   font=('Segoe UI', 10),
-                                   bg='#ecf0f1',
-                                   fg='#2c3e50',
-                                   relief='flat',
-                                   bd=0)
-        self.x_min_entry.pack(side=tk.LEFT, padx=5)
-        self.x_min_entry.insert(0, "1e-1")
-
-        tk.Label(x_frame, 
-                text="X-max:", 
-                font=('Segoe UI', 10),
-                bg='#34495e',
-                fg='#ecf0f1').pack(side=tk.LEFT, padx=(10, 0))
-        
-        self.x_max_entry = tk.Entry(x_frame, 
-                                   width=8, 
-                                   font=('Segoe UI', 10),
-                                   bg='#ecf0f1',
-                                   fg='#2c3e50',
-                                   relief='flat',
-                                   bd=0)
-        self.x_max_entry.pack(side=tk.LEFT, padx=5)
-        self.x_max_entry.insert(0, "1e8")
-
-        # Y-axis controls
-        y_frame = tk.Frame(axis_frame, bg='#34495e')
-        y_frame.pack(fill=tk.X, pady=2)
-
-        tk.Label(y_frame, 
-                text="Y-min:", 
-                font=('Segoe UI', 10),
-                bg='#34495e',
-                fg='#ecf0f1').pack(side=tk.LEFT)
-        
-        self.y_min_entry = tk.Entry(y_frame, 
-                                   width=8, 
-                                   font=('Segoe UI', 10),
-                                   bg='#ecf0f1',
-                                   fg='#2c3e50',
-                                   relief='flat',
-                                   bd=0)
-        self.y_min_entry.pack(side=tk.LEFT, padx=5)
-        self.y_min_entry.insert(0, "0.1")
-
-        tk.Label(y_frame, 
-                text="Y-max:", 
-                font=('Segoe UI', 10),
-                bg='#34495e',
-                fg='#ecf0f1').pack(side=tk.LEFT, padx=(10, 0))
-        
-        self.y_max_entry = tk.Entry(y_frame, 
-                                   width=8, 
-                                   font=('Segoe UI', 10),
-                                   bg='#ecf0f1',
-                                   fg='#2c3e50',
-                                   relief='flat',
-                                   bd=0)
-        self.y_max_entry.pack(side=tk.LEFT, padx=5)
-        self.y_max_entry.insert(0, "1e4")
-
-        # Set axis range button
-        axis_button = tk.Button(axis_frame, 
-                               text="Set Axis Range", 
-                               command=self.update_axis_range, 
-                               bg='#3498db',
-                               fg='#ffffff',
-                               font=('Segoe UI', 10, 'bold'),
-                               relief='flat',
-                               bd=0,
-                               activebackground='#2980b9',
-                               activeforeground='#ffffff')
-        axis_button.pack(pady=10)
+        self._make_button(axis_card, "Set Axis Range",
+                          self.update_axis_range,
+                          'Primary.TButton').pack(fill=tk.X, pady=(8, 0))
 
         # T vs aT plot
-        at_plot_frame = tk.Frame(controls_frame, bg='#2c3e50', relief='flat', bd=0)
-        at_plot_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
+        at_card = self._make_card(right_panel, padx=8, pady=8)
+        at_card.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
 
-        at_plot_title = tk.Label(at_plot_frame, 
-                                text="T vs aT Plot", 
-                                font=('Segoe UI', 12, 'bold'),
-                                bg='#2c3e50',
-                                fg='#ecf0f1')
-        at_plot_title.pack(pady=5)
+        tk.Label(at_card, text="T vs a\u209c",
+                 font=(FONT_FAMILY, 11, 'bold'), bg=SURFACE, fg=TEXT
+                 ).pack(anchor='w', pady=(0, 4))
 
-        self.at_plot_figure, self.at_plot_ax = plt.subplots(figsize=(6, 4))
-        self.at_plot_figure.patch.set_facecolor('#2c3e50')
-        self.at_plot_ax.set_facecolor('#2c3e50')
-        self.at_plot_canvas = FigureCanvasTkAgg(self.at_plot_figure, master=at_plot_frame)
+        self.at_plot_figure, self.at_plot_ax = self._setup_plot(figsize=(5, 3))
+        self.at_plot_canvas = FigureCanvasTkAgg(self.at_plot_figure,
+                                                 master=at_card)
         self.at_plot_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-    def darken_color(self, color):
-        """Helper function to darken a color for active states"""
-        color_map = {
-            '#3498db': '#2980b9',
-            '#27ae60': '#229954',
-            '#f39c12': '#d68910',
-            '#9b59b6': '#8e44ad',
-            '#e74c3c': '#c0392b',
-            '#1abc9c': '#16a085',
-            '#34495e': '#2c3e50'
-        }
-        return color_map.get(color, color)
+    # ═════════════════════════════════════════════════════════════════════════
+    # Business Logic  (unchanged)
+    # ═════════════════════════════════════════════════════════════════════════
 
     def update_axis_range(self):
         x_min = float(self.x_min_entry.get())
@@ -705,16 +557,15 @@ class WLF_GUI(tk.Tk):
     def on_table_select(self, event):
         selected_item = self.temp_table.selection()[0]
         selected_temp = self.temp_table.item(selected_item, "values")[0]
-        self.selected_temp = float(selected_temp.replace('°C', ''))
+        self.selected_temp = float(selected_temp.replace('\u00b0C', ''))
 
-        # Initialize sliders
         self.at_slider.set(1)
         self.bt_slider.set(1)
         self.update_master_curve()
-        
+
     def on_temperature_selected(self, event):
         selected_temp = self.temperature_selector.get()
-        self.selected_temp = float(selected_temp.replace('°C', ''))
+        self.selected_temp = float(selected_temp.replace('\u00b0C', ''))
         self.update_master_curve()
 
     def update_sensitivity(self, event=None):
@@ -729,7 +580,7 @@ class WLF_GUI(tk.Tk):
         self.loaded_shifted_freqs = self.shifted_freqs
 
         for temp in self.loaded_shifted_data.columns:
-            self.temp_table.insert("", "end", values=(f'{temp}°C'))
+            self.temp_table.insert("", "end", values=(f'{temp}\u00b0C'))
 
         self.plot_master_curve()
 
@@ -741,17 +592,15 @@ class WLF_GUI(tk.Tk):
         for temp in self.loaded_shifted_data.keys():
             freqs = self.loaded_shifted_freqs[temp]
             data = self.loaded_shifted_data[temp]
-            self.master_curve_ax.plot(freqs, data, label=f'{temp}°C')
+            self.master_curve_ax.plot(freqs, data, label=f'{temp}\u00b0C')
 
-        self.master_curve_ax.set_xlabel('Shifted Frequency (Hz)', fontsize=8)
-        self.master_curve_ax.set_ylabel('Shifted Data (MPa)', fontsize=8)
+        self._style_plot(self.master_curve_ax,
+                         xlabel='Shifted Frequency (Hz)',
+                         ylabel='Shifted Data (MPa)',
+                         title='Master Curve')
         self.master_curve_ax.set_xscale('log')
         self.master_curve_ax.set_yscale('log')
         self.update_axis_range()
-        self.master_curve_ax.set_title('Master Curve', fontsize=10)
-        self.master_curve_ax.legend(fontsize=8)
-        self.master_curve_ax.grid(True)
-
         self.master_curve_canvas.draw()
 
     def update_master_curve(self, event=None):
@@ -766,27 +615,27 @@ class WLF_GUI(tk.Tk):
             if float(temp) == self.selected_temp:
                 freqs = self.loaded_shifted_freqs[temp] * aT
                 data = self.loaded_shifted_data[temp] * bT
-                self.master_curve_ax.plot(freqs, data, label=f'{temp}°C', color='green', linewidth=2)
+                self.master_curve_ax.plot(freqs, data,
+                                          label=f'{temp}\u00b0C',
+                                          color=ACCENT, linewidth=2)
             else:
                 freqs = self.loaded_shifted_freqs[temp]
                 data = self.loaded_shifted_data[temp]
-                self.master_curve_ax.plot(freqs, data, label=f'{temp}°C', color='grey', alpha=0.5)
+                self.master_curve_ax.plot(freqs, data,
+                                          label=f'{temp}\u00b0C',
+                                          color='#C0C0C0', alpha=0.5)
 
-        self.master_curve_ax.set_xlabel('Shifted Frequency (Hz)', fontsize=8)
-        self.master_curve_ax.set_ylabel('Shifted Data (MPa)', fontsize=8)
+        self._style_plot(self.master_curve_ax,
+                         xlabel='Shifted Frequency (Hz)',
+                         ylabel='Shifted Data (MPa)',
+                         title='Adjusted Master Curve')
         self.master_curve_ax.set_xscale('log')
         self.master_curve_ax.set_yscale('log')
         self.update_axis_range()
-        self.master_curve_ax.set_title('Adjusted Master Curve', fontsize=10)
-        self.master_curve_ax.legend(fontsize=8)
-        self.master_curve_ax.grid(True)
-
         self.master_curve_canvas.draw()
 
-        # Update T vs aT plot
         self.update_at_plot()
 
-        
     def update_at_plot(self):
         if not hasattr(self, 'loaded_shifted_data') or not hasattr(self, 'loaded_shifted_freqs'):
             return
@@ -797,24 +646,20 @@ class WLF_GUI(tk.Tk):
         temperatures = sorted([float(temp) for temp in self.loaded_shifted_data.keys()])
         at_values = [aT if float(temp) == self.selected_temp else 1 for temp in temperatures]
 
-        self.at_plot_ax.plot(temperatures, at_values, marker='o', linestyle='-', color='green', label='Adjusted aT')
-        self.at_plot_ax.set_xlabel('Temperature (°C)', fontsize=8)
-        self.at_plot_ax.set_ylabel('aT', fontsize=8)
-        self.at_plot_ax.set_title('T vs aT', fontsize=10)
-        self.at_plot_ax.legend(fontsize=8)
-        self.at_plot_ax.grid(True)
-
+        self.at_plot_ax.plot(temperatures, at_values, marker='o', linestyle='-',
+                             color=ACCENT, label='Adjusted a\u209c')
+        self._style_plot(self.at_plot_ax,
+                         xlabel='Temperature (\u00b0C)',
+                         ylabel='a\u209c',
+                         title='T vs a\u209c')
         self.at_plot_canvas.draw()
 
-
-    
     def on_press(self, event):
         if event.inaxes is not None:
             self.dragging = True
             self.drag_start_y = event.ydata
             self.drag_start_data = self.shifted_data.copy()
 
-            # Find the nearest line to the mouse click
             self.selected_line = None
             min_distance = float('inf')
             for line in self.shifted_ax.get_lines():
@@ -827,9 +672,9 @@ class WLF_GUI(tk.Tk):
     def on_motion(self, event):
         if self.dragging and event.inaxes is not None and self.selected_line is not None:
             dy = event.ydata - self.drag_start_y
-            label = self.selected_line.get_label().replace('°C', '').strip()
-            label = float(label)  # Ensure label is numeric to match DataFrame columns
-            shift_factor = 10 ** (dy / 100)  # Reduce the sensitivity of the shift
+            label = self.selected_line.get_label().replace('\u00b0C', '').strip()
+            label = float(label)
+            shift_factor = 10 ** (dy / 100)
             self.shifted_data[label] = self.drag_start_data[label] * shift_factor
             self.plot_shifted_data()
 
@@ -843,28 +688,28 @@ class WLF_GUI(tk.Tk):
 
         self.shifted_ax.clear()
         for temp in self.shifted_data.columns:
-            self.shifted_ax.plot(self.shifted_freqs[temp], self.shifted_data[temp], label='{0}°C'.format(temp))
+            self.shifted_ax.plot(self.shifted_freqs[temp],
+                                self.shifted_data[temp],
+                                label='{0}\u00b0C'.format(temp))
 
-        self.shifted_ax.set_xlabel('Shifted Frequency (Hz)', fontsize=8)
-        self.shifted_ax.set_ylabel('Shifted Data (MPa)', fontsize=8)
+        self._style_plot(self.shifted_ax,
+                         xlabel='Shifted Frequency (Hz)',
+                         ylabel='Shifted Data (MPa)',
+                         title='Shifted Data Using TTS')
         self.shifted_ax.set_xscale('log')
         self.shifted_ax.set_yscale('log')
-        self.shifted_ax.set_ylim([0.1, 1e4])  # Set a constant range for the y-axis
-        self.shifted_ax.set_title('Shifted Data Using TTS', fontsize=10)
-        self.shifted_ax.legend(fontsize=8)
-        self.shifted_ax.grid(True)
-
+        self.shifted_ax.set_ylim([0.1, 1e4])
         self.shifted_canvas.draw()
 
     def save_estimated_aT_to_excel(self):
         if not hasattr(self, 'estimated_aT_values'):
-            messagebox.showerror("Error", "No estimated aT values to save. Please estimate aT values in Step 4 first.")
+            messagebox.showerror("Error", "No estimated a\u209c values to save. Please estimate a\u209c values in Step 4 first.")
             return
 
         file_path = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=[('Excel files', '*.xlsx'), ('All files', '*.*')])
         if file_path:
             self.estimated_aT_values.to_excel(file_path, index=False)
-            messagebox.showinfo("Save to Excel", "Estimated aT values saved successfully!")
+            messagebox.showinfo("Save to Excel", "Estimated a\u209c values saved successfully!")
 
     def save_to_excel(self):
         file_path = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=[('Excel files', '*.xlsx'), ('All files', '*.*')])
@@ -879,9 +724,8 @@ class WLF_GUI(tk.Tk):
                 messagebox.showerror("Save to Excel", "No data selected.")
                 return
 
-            T_r = float(self.reference_temp_entry.get()) + 273.15  # Convert to Kelvin
-            # 온도를 5도 간격으로 피팅 (-80°C부터 80°C까지)
-            T_fit = np.arange(-80, 81, 5) + 273.15  # Convert to Kelvin
+            T_r = float(self.reference_temp_entry.get()) + 273.15
+            T_fit = np.arange(-80, 81, 5) + 273.15
 
             with pd.ExcelWriter(file_path) as writer:
                 for values in selected_data:
@@ -889,7 +733,7 @@ class WLF_GUI(tk.Tk):
                     log_aT_fit = self.WLF(T_fit, C1, C2, T_r)
                     aT_fit = 10 ** log_aT_fit
                     fit_df = pd.DataFrame({
-                        'Temperature (°C)': T_fit - 273.15,  # Convert to Celsius for saving
+                        'Temperature (\u00b0C)': T_fit - 273.15,
                         'log(a_T)': log_aT_fit,
                         'a_T': aT_fit
                     })
@@ -909,17 +753,16 @@ class WLF_GUI(tk.Tk):
             data = self.shifted_data[temp]
             spline = UnivariateSpline(np.log(freqs), np.log(data), s=1)
             smoothed_data = np.exp(spline(np.log(freqs)))
-            self.shifted_ax.plot(freqs, smoothed_data, label='{0}°C'.format(temp))
+            self.shifted_ax.plot(freqs, smoothed_data,
+                                label='{0}\u00b0C'.format(temp))
 
-        self.shifted_ax.set_xlabel('Shifted Frequency (Hz)', fontsize=8)
-        self.shifted_ax.set_ylabel('Shifted Data (MPa)', fontsize=8)
+        self._style_plot(self.shifted_ax,
+                         xlabel='Shifted Frequency (Hz)',
+                         ylabel='Shifted Data (MPa)',
+                         title='Smoothed Shifted Data Using TTS')
         self.shifted_ax.set_xscale('log')
         self.shifted_ax.set_yscale('log')
         self.shifted_ax.set_ylim([0.1, 1e4])
-        self.shifted_ax.set_title('Smoothed Shifted Data Using TTS', fontsize=10)
-        self.shifted_ax.legend(fontsize=8)
-        self.shifted_ax.grid(True)
-
         self.shifted_canvas.draw()
 
     def load_data(self):
@@ -936,14 +779,13 @@ class WLF_GUI(tk.Tk):
     def plot_loaded_data(self):
         self.shifted_ax.clear()
         for temp in self.data.columns:
-            self.shifted_ax.plot(self.data.index, self.data[temp], label='{0}°C'.format(temp))
+            self.shifted_ax.plot(self.data.index, self.data[temp],
+                                label='{0}\u00b0C'.format(temp))
 
-        self.shifted_ax.set_xlabel('Frequency (Hz)', fontsize=8)
-        self.shifted_ax.set_ylabel('Data', fontsize=8)
-        self.shifted_ax.set_title('Loaded Data', fontsize=10)
-        self.shifted_ax.legend(fontsize=8)
-        self.shifted_ax.grid(True)
-
+        self._style_plot(self.shifted_ax,
+                         xlabel='Frequency (Hz)',
+                         ylabel='Data',
+                         title='Loaded Data')
         self.shifted_canvas.draw()
 
     def retrieve_aT_values(self):
@@ -952,7 +794,7 @@ class WLF_GUI(tk.Tk):
             print("Retrieved aT values in Step 5:")
             print(self.estimated_aT_values)
         else:
-            messagebox.showerror("Error", "Please send aT values from Step 4 first.")
+            messagebox.showerror("Error", "Please send a\u209c values from Step 4 first.")
 
     def apply_tts(self):
         if self.data is None:
@@ -960,7 +802,7 @@ class WLF_GUI(tk.Tk):
             return
 
         if not hasattr(self, 'estimated_aT_values'):
-            messagebox.showerror("Error", "Please retrieve aT values in Step 5 first.")
+            messagebox.showerror("Error", "Please retrieve a\u209c values in Step 5 first.")
             return
 
         shifted_data = {}
@@ -968,14 +810,12 @@ class WLF_GUI(tk.Tk):
 
         for temp in self.data.columns:
             try:
-                # Find the closest temperature
-                closest_temp = min(self.estimated_aT_values['Temperature (°C)'], key=lambda x: abs(x - float(temp)))
-                aT = self.estimated_aT_values[self.estimated_aT_values['Temperature (°C)'] == closest_temp]['a_T'].values[0]
+                closest_temp = min(self.estimated_aT_values['Temperature (\u00b0C)'], key=lambda x: abs(x - float(temp)))
+                aT = self.estimated_aT_values[self.estimated_aT_values['Temperature (\u00b0C)'] == closest_temp]['a_T'].values[0]
             except IndexError:
-                messagebox.showerror("Error", "No estimated aT value for temperature {0}°C.".format(temp))
+                messagebox.showerror("Error", "No estimated a\u209c value for temperature {0}\u00b0C.".format(temp))
                 return
 
-            # Shift the x-axis (frequency) by multiplying with aT
             shifted_freq = self.data.index * aT
             shifted_data[temp] = self.data[temp].values
             shifted_freqs[temp] = shifted_freq
@@ -1012,7 +852,7 @@ class WLF_GUI(tk.Tk):
                         'Frequency (Hz)': self.shifted_freqs[temp],
                         'Modulus (MPa)': self.shifted_data[temp]
                     })
-                    data_df.to_excel(writer, sheet_name=f'{temp}°C', index=False)
+                    data_df.to_excel(writer, sheet_name=f'{temp}\u00b0C', index=False)
             messagebox.showinfo("Save to Excel", "Shifted data saved successfully!")
 
     def send_aT_values(self):
@@ -1020,7 +860,7 @@ class WLF_GUI(tk.Tk):
             estimated_xdata = self.estimate_ax.get_lines()[0].get_xdata()
             estimated_ydata = self.estimate_ax.get_lines()[0].get_ydata()
             self.estimated_aT_values = pd.DataFrame({
-                'Temperature (°C)': estimated_xdata,  # Keep the temperatures as decimals
+                'Temperature (\u00b0C)': estimated_xdata,
                 'a_T': 10 ** estimated_ydata,
                 'log(a_T)': estimated_ydata
             })
@@ -1050,15 +890,15 @@ class WLF_GUI(tk.Tk):
             if len(temperatures) != len(log_aT_values):
                 raise ValueError("The number of temperatures and log aT values must be the same.")
 
-            self.T_data = np.array(temperatures) + 273.15  # Convert to Kelvin
+            self.T_data = np.array(temperatures) + 273.15
             self.log_aT_data = np.array(log_aT_values)
 
-            T_r = float(self.reference_temp_entry.get()) + 273.15  # Convert to Kelvin
+            T_r = float(self.reference_temp_entry.get()) + 273.15
             initial_guess = [17, 52]
 
             popt, _ = curve_fit(lambda T, C1, C2: self.WLF(T, int(C1), int(C2), T_r), self.T_data, self.log_aT_data, p0=initial_guess)
             self.C1_fit, self.C2_fit = int(popt[0]), int(popt[1])
-            self.result_label.config(text="C1: {0}, C2: {1}".format(self.C1_fit, self.C2_fit))
+            self.result_label.config(text="C1: {0}   C2: {1}".format(self.C1_fit, self.C2_fit))
 
             self.c1_slider.set(self.C1_fit)
             self.c2_slider.set(self.C2_fit)
@@ -1075,36 +915,37 @@ class WLF_GUI(tk.Tk):
         if self.T_data is None or self.log_aT_data is None:
             return
 
-        T_r = float(self.reference_temp_entry.get()) + 273.15  # Convert to Kelvin
+        T_r = float(self.reference_temp_entry.get()) + 273.15
         C1 = self.c1_slider.get()
         C2 = self.c2_slider.get()
 
         self.ax.clear()
-        self.ax.scatter(self.T_data - 273.15, self.log_aT_data, label='Data')  # Convert to Celsius for plotting
+        self.ax.scatter(self.T_data - 273.15, self.log_aT_data,
+                        label='Data', color=ACCENT, zorder=5, s=50,
+                        edgecolors='white', linewidths=0.8)
 
-        T_fit = np.linspace(-80, 80, 100) + 273.15  # Convert to Kelvin
+        T_fit = np.linspace(-80, 80, 100) + 273.15
         log_aT_fit = self.WLF(T_fit, C1, C2, T_r)
-        self.ax.plot(T_fit - 273.15, log_aT_fit, label='WLF Fit (C1={0}, C2={1})'.format(C1, C2), color='red')  # Convert to Celsius for plotting
+        self.ax.plot(T_fit - 273.15, log_aT_fit,
+                     label='WLF Fit (C1={0}, C2={1})'.format(C1, C2),
+                     color=DANGER, linewidth=1.8)
 
-        self.ax.set_xlim([-80, 80])  # x축 범위 설정
-        self.ax.set_ylim([min(log_aT_fit) - 1, max(log_aT_fit) + 1])  # y축 범위 설정
-        self.ax.set_xlabel('Temperature (°C)', fontsize=8)
-        self.ax.set_ylabel('log(a_T)', fontsize=8)
-        self.ax.set_title('WLF Fit Comparison', fontsize=10)
-        self.ax.legend(fontsize=8)
-        self.ax.grid(True)
-
+        self.ax.set_xlim([-80, 80])
+        self.ax.set_ylim([min(log_aT_fit) - 1, max(log_aT_fit) + 1])
+        self._style_plot(self.ax,
+                         xlabel='Temperature (\u00b0C)',
+                         ylabel='log(a\u209c)',
+                         title='WLF Fit Comparison')
         self.canvas.draw()
 
     def perform_grid_search(self):
         if self.T_data is None or self.log_aT_data is None:
             return
 
-        T_r = float(self.reference_temp_entry.get()) + 273.15  # Convert to Kelvin
+        T_r = float(self.reference_temp_entry.get()) + 273.15
 
-        # 최적화된 그리드 검색 범위 (실행 시간 단축)
-        C1_range = np.arange(0, 200, 5)  # 0-200, 5씩 증가
-        C2_range = np.arange(0, 200, 5)  # 0-200, 5씩 증가
+        C1_range = np.arange(0, 200, 5)
+        C2_range = np.arange(0, 200, 5)
 
         results = []
 
@@ -1124,11 +965,11 @@ class WLF_GUI(tk.Tk):
         if results:
             best_params = results[0]
             self.C1_fit, self.C2_fit = best_params[1], best_params[2]
-            self.result_label.config(text="C1: {0}, C2: {1}".format(self.C1_fit, self.C2_fit))
+            self.result_label.config(text="C1: {0}   C2: {1}".format(self.C1_fit, self.C2_fit))
             self.c1_slider.set(self.C1_fit)
             self.c2_slider.set(self.C2_fit)
             self.tree.item(self.tree.get_children()[0], tags=('recommended',))
-            self.tree.tag_configure('recommended', background='lightgreen')
+            self.tree.tag_configure('recommended', background='#DDEAF6')
 
     def calculate_sse(self, C1, C2, T_r):
         log_aT_fit = self.WLF(self.T_data, C1, C2, T_r)
@@ -1147,13 +988,15 @@ class WLF_GUI(tk.Tk):
         if self.T_data is None or self.log_aT_data is None:
             return
 
-        T_r = float(self.reference_temp_entry.get()) + 273.15  # Convert to Kelvin
+        T_r = float(self.reference_temp_entry.get()) + 273.15
         self.ax.clear()
-        self.ax.scatter(self.T_data - 273.15, self.log_aT_data, label='Data')  # Convert to Celsius for plotting
+        self.ax.scatter(self.T_data - 273.15, self.log_aT_data,
+                        label='Data', color=ACCENT, zorder=5, s=50,
+                        edgecolors='white', linewidths=0.8)
 
-        T_fit = np.linspace(-80, 80, 100) + 273.15  # Convert to Kelvin
+        T_fit = np.linspace(-80, 80, 100) + 273.15
 
-        colors = ['red', 'blue', 'green', 'orange', 'purple']
+        colors = [DANGER, '#6F42C1', SUCCESS, '#F97316', '#0EA5E9']
         color_index = 0
         log_aT_fit_all = []
 
@@ -1163,26 +1006,27 @@ class WLF_GUI(tk.Tk):
                 C1, C2 = int(values[1]), int(values[2])
                 log_aT_fit = self.WLF(T_fit, C1, C2, T_r)
                 log_aT_fit_all.extend(log_aT_fit)
-                self.ax.plot(T_fit - 273.15, log_aT_fit, label='WLF Fit (C1={0}, C2={1})'.format(C1, C2), color=colors[color_index % len(colors)])
+                self.ax.plot(T_fit - 273.15, log_aT_fit,
+                             label='WLF Fit (C1={0}, C2={1})'.format(C1, C2),
+                             color=colors[color_index % len(colors)],
+                             linewidth=1.8)
                 color_index += 1
 
-        self.ax.set_xlim([-80, 80])  # x축 범위 설정
+        self.ax.set_xlim([-80, 80])
         if log_aT_fit_all:
-            self.ax.set_ylim([min(log_aT_fit_all) - 1, max(log_aT_fit_all) + 1])  # y축 범위 설정
-        self.ax.set_xlabel('Temperature (°C)', fontsize=8)
-        self.ax.set_ylabel('log(a_T)', fontsize=8)
-        self.ax.set_title('WLF Fit Comparison', fontsize=10)
-        self.ax.legend(fontsize=8)
-        self.ax.grid(True)
-
+            self.ax.set_ylim([min(log_aT_fit_all) - 1, max(log_aT_fit_all) + 1])
+        self._style_plot(self.ax,
+                         xlabel='Temperature (\u00b0C)',
+                         ylabel='log(a\u209c)',
+                         title='WLF Fit Comparison')
         self.canvas.draw()
 
     def estimate_aT(self):
         if self.T_data is None or self.log_aT_data is None:
             return
 
-        T_r_new = float(self.new_reference_temp_entry.get()) + 273.15  # Convert to Kelvin
-        T_r = float(self.reference_temp_entry.get()) + 273.15  # Convert to Kelvin
+        T_r_new = float(self.new_reference_temp_entry.get()) + 273.15
+        T_r = float(self.reference_temp_entry.get()) + 273.15
 
         C1 = self.c1_slider.get()
         C2 = self.c2_slider.get()
@@ -1192,28 +1036,31 @@ class WLF_GUI(tk.Tk):
             C1 = int(selected_items[0]['values'][1])
             C2 = int(selected_items[0]['values'][2])
 
-        T_fit = np.linspace(-80, 80, 100) + 273.15  # Convert to Kelvin
+        T_fit = np.linspace(-80, 80, 100) + 273.15
         log_aT_new = self.WLF(T_fit, C1, C2, T_r_new)
         aT_new = 10 ** log_aT_new
 
         self.estimate_ax.clear()
-        self.estimate_ax.scatter(self.T_data - 273.15, self.log_aT_data, label='Original Data')  # Original data
-        self.estimate_ax.plot(T_fit - 273.15, log_aT_new, label='Estimated aT (T_r_new={0}°C, C1={1}, C2={2})'.format(T_r_new - 273.15, C1, C2), color='green')  # Estimated data
-        self.estimate_ax.plot(T_fit - 273.15, self.WLF(T_fit, C1, C2, T_r), label='Original aT (T_r={0}°C, C1={1}, C2={2})'.format(T_r - 273.15, C1, C2), color='red')  # Original fit data for comparison
+        self.estimate_ax.scatter(self.T_data - 273.15, self.log_aT_data,
+                                 label='Original Data', color=ACCENT, zorder=5,
+                                 s=50, edgecolors='white', linewidths=0.8)
+        self.estimate_ax.plot(T_fit - 273.15, log_aT_new,
+                              label='Estimated a\u209c (T_r_new={0}\u00b0C, C1={1}, C2={2})'.format(T_r_new - 273.15, C1, C2),
+                              color=SUCCESS, linewidth=1.8)
+        self.estimate_ax.plot(T_fit - 273.15, self.WLF(T_fit, C1, C2, T_r),
+                              label='Original a\u209c (T_r={0}\u00b0C, C1={1}, C2={2})'.format(T_r - 273.15, C1, C2),
+                              color=DANGER, linewidth=1.8)
 
         self.estimate_ax.set_xlim([-80, 80])
-        self.estimate_ax.set_ylim([-3, 10])  # y축 범위 설정
-        self.estimate_ax.set_xlabel('Temperature (°C)', fontsize=8)
-        self.estimate_ax.set_ylabel('log(a_T)', fontsize=8)
-        self.estimate_ax.set_title('Estimated aT Fit', fontsize=10)
-        self.estimate_ax.legend(fontsize=8)
-        self.estimate_ax.grid(True)
-
+        self.estimate_ax.set_ylim([-3, 10])
+        self._style_plot(self.estimate_ax,
+                         xlabel='Temperature (\u00b0C)',
+                         ylabel='log(a\u209c)',
+                         title='Estimated a\u209c Fit')
         self.estimate_canvas.draw()
 
-        # Save estimated aT values to self.estimated_aT_values for later use in Step 5
         self.estimated_aT_values = pd.DataFrame({
-            'Temperature (°C)': np.round(T_fit - 273.15).astype(int),  # Convert to Celsius and round to integer
+            'Temperature (\u00b0C)': np.round(T_fit - 273.15).astype(int),
             'a_T': aT_new,
             'log(a_T)': log_aT_new
         })
@@ -1224,9 +1071,9 @@ class WLF_GUI(tk.Tk):
         if self.selected_label is None or self.selected_index is None:
             return
 
-        shift_amount = 0.1  # Adjust this value to change the step size
-        label = self.selected_label.split('°')[0]  # Extract temperature from label
-        temp = f"{label}°C"
+        shift_amount = 0.1
+        label = self.selected_label.split('\u00b0')[0]
+        temp = f"{label}\u00b0C"
 
         if event.key == 'up':
             self.shifted_data[temp][self.selected_index] *= (1 + shift_amount)
@@ -1238,6 +1085,7 @@ class WLF_GUI(tk.Tk):
             self.selected_index = max(self.selected_index - 1, 0)
 
         self.plot_shifted_data()
+
 
 if __name__ == "__main__":
     try:
