@@ -23,7 +23,14 @@ DANGER_HVR  = '#CB2431'
 WARN        = '#F9A825'   # amber
 PLOT_BG     = '#FFFFFF'   # plot background
 PLOT_GRID   = '#E8EAED'   # plot grid color
-FONT_FAMILY = 'Helvetica'
+import matplotlib.font_manager as _fm
+# Pick the first available font for cross-platform support
+FONT_FAMILY = 'sans-serif'
+for _candidate in ('Segoe UI', 'Helvetica', 'Arial', 'DejaVu Sans'):
+    if any(_candidate.lower() in f.name.lower() for f in _fm.fontManager.ttflist):
+        FONT_FAMILY = _candidate
+        break
+plt.rcParams['font.family'] = FONT_FAMILY
 
 
 class WLF_GUI(tk.Tk):
@@ -909,7 +916,10 @@ class WLF_GUI(tk.Tk):
             messagebox.showerror("Error", "Failed to fit data: {0}".format(e))
 
     def WLF(self, T, C1, C2, T_r):
-        return -C1 * (T - T_r) / (C2 + (T - T_r))
+        denom = C2 + (T - T_r)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            result = np.where(denom == 0, np.nan, -C1 * (T - T_r) / denom)
+        return result
 
     def update_plot(self, event=None):
         if self.T_data is None or self.log_aT_data is None:
@@ -931,7 +941,9 @@ class WLF_GUI(tk.Tk):
                      color=DANGER, linewidth=1.8)
 
         self.ax.set_xlim([-80, 80])
-        self.ax.set_ylim([min(log_aT_fit) - 1, max(log_aT_fit) + 1])
+        finite = log_aT_fit[np.isfinite(log_aT_fit)]
+        if len(finite) > 0:
+            self.ax.set_ylim([finite.min() - 1, finite.max() + 1])
         self._style_plot(self.ax,
                          xlabel='Temperature (\u00b0C)',
                          ylabel='log(a\u209c)',
@@ -973,8 +985,19 @@ class WLF_GUI(tk.Tk):
 
     def calculate_sse(self, C1, C2, T_r):
         log_aT_fit = self.WLF(self.T_data, C1, C2, T_r)
-        sse = np.sum((self.log_aT_data - log_aT_fit) ** 2)
+        sse = np.nansum((self.log_aT_data - log_aT_fit) ** 2)
         return sse
+
+    def sort_tree_column(self, col, reverse):
+        data = [(self.tree.set(k, col), k) for k in self.tree.get_children('')]
+        try:
+            data.sort(key=lambda t: float(t[0]), reverse=reverse)
+        except ValueError:
+            data.sort(key=lambda t: t[0], reverse=reverse)
+        for index, (_, k) in enumerate(data):
+            self.tree.move(k, '', index)
+        self.sort_orders[col] = not reverse
+        self.tree.heading(col, command=lambda: self.sort_tree_column(col, not reverse))
 
     def on_row_click(self, event):
         item = self.tree.selection()[0]
@@ -1014,7 +1037,9 @@ class WLF_GUI(tk.Tk):
 
         self.ax.set_xlim([-80, 80])
         if log_aT_fit_all:
-            self.ax.set_ylim([min(log_aT_fit_all) - 1, max(log_aT_fit_all) + 1])
+            finite = [v for v in log_aT_fit_all if np.isfinite(v)]
+            if finite:
+                self.ax.set_ylim([min(finite) - 1, max(finite) + 1])
         self._style_plot(self.ax,
                          xlabel='Temperature (\u00b0C)',
                          ylabel='log(a\u209c)',
