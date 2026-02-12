@@ -738,7 +738,7 @@ class WLF_GUI(tk.Tk):
 
             with pd.ExcelWriter(file_path) as writer:
                 for values in selected_data:
-                    C1, C2 = int(values[1]), int(values[2])
+                    C1, C2 = float(values[1]), float(values[2])
                     log_aT_fit = self.WLF(T_fit, C1, C2, T_r)
                     aT_fit = 10 ** log_aT_fit
                     fit_df = pd.DataFrame({
@@ -746,7 +746,9 @@ class WLF_GUI(tk.Tk):
                         'log(a_T)': log_aT_fit,
                         'a_T': aT_fit
                     })
-                    sheet_name = 'Fit_C1_{0}_C2_{1}'.format(C1, C2)
+                    sheet_name = 'C1_{0}_C2_{1}'.format(C1, C2)
+                    # Excel sheet names max 31 chars, no special chars
+                    sheet_name = sheet_name[:31]
                     fit_df.to_excel(writer, sheet_name=sheet_name, index=False)
 
             messagebox.showinfo("Save to Excel", "Data saved successfully!")
@@ -798,20 +800,24 @@ class WLF_GUI(tk.Tk):
         self.shifted_canvas.draw()
 
     def retrieve_aT_values(self):
-        if hasattr(self, 'shift_data_frame') and hasattr(self.shift_data_frame, 'estimated_aT_values'):
-            self.estimated_aT_values = self.shift_data_frame.estimated_aT_values
-            print("Retrieved aT values in Step 5:")
-            print(self.estimated_aT_values)
+        if self.estimated_aT_values is not None:
+            messagebox.showinfo("Success",
+                                "a\u209c values loaded ({0} points).".format(
+                                    len(self.estimated_aT_values)))
         else:
-            messagebox.showerror("Error", "Please send a\u209c values from Step 4 first.")
+            messagebox.showerror("Error",
+                                 "Please estimate and send a\u209c values "
+                                 "from Step 4 first.")
 
     def apply_tts(self):
         if self.data is None:
             messagebox.showerror("Error", "Please load the data first.")
             return
 
-        if not hasattr(self, 'estimated_aT_values'):
-            messagebox.showerror("Error", "Please retrieve a\u209c values in Step 5 first.")
+        if self.estimated_aT_values is None:
+            messagebox.showerror("Error",
+                                 "Please estimate a\u209c in Step 4 and send "
+                                 "to Step 5 first.")
             return
 
         shifted_data = {}
@@ -865,24 +871,24 @@ class WLF_GUI(tk.Tk):
             messagebox.showinfo("Save to Excel", "Shifted data saved successfully!")
 
     def send_aT_values(self):
-        if not hasattr(self, 'estimated_aT_values'):
-            estimated_xdata = self.estimate_ax.get_lines()[0].get_xdata()
-            estimated_ydata = self.estimate_ax.get_lines()[0].get_ydata()
-            self.estimated_aT_values = pd.DataFrame({
-                'Temperature (\u00b0C)': estimated_xdata,
-                'a_T': 10 ** estimated_ydata,
-                'log(a_T)': estimated_ydata
-            })
-        if hasattr(self, 'shift_data_frame'):
-            self.shift_data_frame.estimated_aT_values = self.estimated_aT_values
-        else:
-            messagebox.showerror("Error", "Shift data frame not found.")
-        if hasattr(self, 'shift_data_frame'):
-            self.shift_data_frame.estimated_aT_values = self.estimated_aT_values
-            print("aT values sent to Step 5:")
-            print(self.shift_data_frame.estimated_aT_values)
-        else:
-            messagebox.showerror("Error", "Shift data frame not found.")
+        if self.estimated_aT_values is None:
+            # Try to build from plot data if estimate_aT was run but values not stored
+            try:
+                estimated_xdata = self.estimate_ax.get_lines()[0].get_xdata()
+                estimated_ydata = self.estimate_ax.get_lines()[0].get_ydata()
+                self.estimated_aT_values = pd.DataFrame({
+                    'Temperature (\u00b0C)': estimated_xdata,
+                    'a_T': 10 ** estimated_ydata,
+                    'log(a_T)': estimated_ydata
+                })
+            except (IndexError, AttributeError):
+                messagebox.showerror("Error",
+                                     "Please estimate a\u209c in Step 4 first.")
+                return
+
+        messagebox.showinfo("Success",
+                            "a\u209c values are ready for Step 5.\n"
+                            "Use 'Retrieve a\u209c' in Step 5 to load them.")
 
     def fit_data(self):
         try:
@@ -905,8 +911,10 @@ class WLF_GUI(tk.Tk):
             T_r = float(self.reference_temp_entry.get()) + 273.15
             initial_guess = [17, 52]
 
-            popt, _ = curve_fit(lambda T, C1, C2: self.WLF(T, int(C1), int(C2), T_r), self.T_data, self.log_aT_data, p0=initial_guess)
-            self.C1_fit, self.C2_fit = int(popt[0]), int(popt[1])
+            popt, _ = curve_fit(lambda T, C1, C2: self.WLF(T, C1, C2, T_r),
+                                self.T_data, self.log_aT_data, p0=initial_guess)
+            self.C1_fit = round(popt[0], 1)
+            self.C2_fit = round(popt[1], 1)
             self.result_label.config(text="C1: {0}   C2: {1}".format(self.C1_fit, self.C2_fit))
 
             self.c1_slider.set(self.C1_fit)
@@ -1045,7 +1053,7 @@ class WLF_GUI(tk.Tk):
         for item in self.tree.get_children():
             if self.tree.set(item, 'Select') == '1':
                 values = self.tree.item(item, 'values')
-                C1, C2 = int(values[1]), int(values[2])
+                C1, C2 = float(values[1]), float(values[2])
                 log_aT_fit = self.WLF(T_fit, C1, C2, T_r)
                 log_aT_fit_all.extend(log_aT_fit)
                 self.ax.plot(T_fit - 273.15, log_aT_fit,
@@ -1077,8 +1085,8 @@ class WLF_GUI(tk.Tk):
 
         selected_items = [self.tree.item(item) for item in self.tree.get_children() if self.tree.set(item, 'Select') == '1']
         if selected_items:
-            C1 = int(selected_items[0]['values'][1])
-            C2 = int(selected_items[0]['values'][2])
+            C1 = float(selected_items[0]['values'][1])
+            C2 = float(selected_items[0]['values'][2])
 
         T_fit = np.linspace(-80, 80, 100) + 273.15
         log_aT_new = self.WLF(T_fit, C1, C2, T_r_new)
