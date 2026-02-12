@@ -287,9 +287,11 @@ class WLF_GUI(tk.Tk):
         slider_card = self._make_card(left_panel, padx=16, pady=12)
         slider_card.pack(fill=tk.X, pady=(8, 0))
 
-        self.c1_slider = self._make_scale(slider_card, 'C1', 0, 1000,
+        self.c1_slider = self._make_scale(slider_card, 'C1', 0, 200,
+                                          resolution=0.5,
                                           command=self.update_plot)
-        self.c2_slider = self._make_scale(slider_card, 'C2', 0, 1000,
+        self.c2_slider = self._make_scale(slider_card, 'C2', 0, 200,
+                                          resolution=0.5,
                                           command=self.update_plot)
 
         # ── Right: Controls ──
@@ -956,28 +958,45 @@ class WLF_GUI(tk.Tk):
 
         T_r = float(self.reference_temp_entry.get()) + 273.15
 
-        C1_range = np.arange(0, 200, 5)
-        C2_range = np.arange(0, 200, 5)
+        # ── Stage 1: coarse scan (step=5) ──
+        C1_coarse = np.arange(0.5, 201, 5)
+        C2_coarse = np.arange(0.5, 201, 5)
+
+        best_sse = np.inf
+        best_C1, best_C2 = 0, 0
+        for C1 in C1_coarse:
+            for C2 in C2_coarse:
+                sse = self.calculate_sse(C1, C2, T_r)
+                if np.isfinite(sse) and sse < best_sse:
+                    best_sse, best_C1, best_C2 = sse, C1, C2
+
+        # ── Stage 2: fine scan (step=0.5) around top coarse result ──
+        margin = 10
+        C1_fine = np.arange(max(0.1, best_C1 - margin), best_C1 + margin + 0.5, 0.5)
+        C2_fine = np.arange(max(0.1, best_C2 - margin), best_C2 + margin + 0.5, 0.5)
 
         results = []
-
-        self.tree.delete(*self.tree.get_children())
-
-        for C1 in C1_range:
-            for C2 in C2_range:
+        for C1 in C1_fine:
+            for C2 in C2_fine:
                 sse = self.calculate_sse(C1, C2, T_r)
-                if not np.isnan(sse):
-                    results.append((False, C1, C2, round(sse, 1)))
+                if np.isfinite(sse):
+                    results.append((False, round(C1, 1), round(C2, 1),
+                                    round(sse, 4)))
 
         results.sort(key=lambda x: x[3])
 
+        # Keep top 200 results for display
+        results = results[:200]
+
+        self.tree.delete(*self.tree.get_children())
         for result in results:
             self.tree.insert('', 'end', values=result)
 
         if results:
             best_params = results[0]
             self.C1_fit, self.C2_fit = best_params[1], best_params[2]
-            self.result_label.config(text="C1: {0}   C2: {1}".format(self.C1_fit, self.C2_fit))
+            self.result_label.config(text="C1: {0}   C2: {1}".format(
+                self.C1_fit, self.C2_fit))
             self.c1_slider.set(self.C1_fit)
             self.c2_slider.set(self.C2_fit)
             self.tree.item(self.tree.get_children()[0], tags=('recommended',))
